@@ -1,0 +1,11 @@
+<!DOCTYPE HTML>
+<head>
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static',filename='styles/styles.css') }}">
+</head>
+<body>
+  <header>{% block head %}{% endblock %}</header>
+  <main>{% block body %}{% endblock %}</main>
+  <footer>{% block footer %}{% endblock %}</footer>
+</body>
+</html>
