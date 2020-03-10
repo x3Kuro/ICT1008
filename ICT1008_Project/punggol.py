@@ -70,7 +70,7 @@ def dijkstra(edges, start, end, choice):
 
 
 # === Dijkstra === Algorithm
-df = pandas.read_csv('edges.csv')
+df = pandas.read_csv('data/edges.csv')
 col = df[['u', 'v', 'length', 'oneway']]
 edges = [tuple(x) for x in col.values]
 
@@ -87,8 +87,8 @@ numOfNodes = temp[2]
 G = ox.graph_from_point((lat, lon), distance=5000, network_type='walk')
 # # ox.footprints_from_point(point, distance, footprint_type='building', retain_invalid=False)
 gdf_nodes, gdf_edges = ox.graph_to_gdfs(G)
-# gdf_nodes.to_csv('nodes.csv')
-# gdf_edges.to_csv('edges.csv')
+# gdf_nodes.to_csv('data/nodes.csv')
+# gdf_edges.to_csv('data/edges.csv')
 # print("Nodes:\n", gdf_nodes.head(), '\n')
 # print("Edges:\n", gdf_edges.head(), '\n')
 # folium_map = ox.plot_graph_folium(G, zoom=zoom, tiles="OpenStreetMap")
