@@ -2,9 +2,26 @@
 <head>
   <title>{% block title %}{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static',filename='styles/styles.css') }}">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+  <!-- Leaflet  CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+  integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+  <link rel="stylesheet" href="{{ url_for('static',filename='dist/Control.FullScreen.css') }}" />
+
+  <script type=text/javascript src="{{url_for('static', filename='jquery-3.4.1.min.js') }}"></script>
+  <script src="https://use.fontawesome.com/releases/v5.12.1/js/all.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+  <!-- Leaflet  JS -->
+  <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+  integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew==" crossorigin=""></script>
+  <script src="{{ url_for('static',filename='dist/Control.FullScreen.js') }}"></script>
+  <script src="{{ url_for('static',filename='dist/leaflet.polylineDecorator.js') }}"></script>
+  <script src="{{ url_for('static',filename='dist/spin.min.js') }}"></script>
+  <script src="{{ url_for('static',filename='dist/leaflet.spin.min.js') }}"></script>
+  {% block head %}{% endblock %}
 </head>
 <body>
-  <header>{% block head %}{% endblock %}</header>
+  <header>{% block header %}{% endblock %}</header>
   <main>{% block body %}{% endblock %}</main>
   <footer>{% block footer %}{% endblock %}</footer>
 </body>
