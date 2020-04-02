@@ -126,11 +126,11 @@ current_time = int(sys.argv[3])
 cost_per_stop = float(sys.argv[4])
 cost_per_trans = float(sys.argv[5])
 
-stops = json.loads(open("new_stops.json").read())
-services = json.loads(open("new_services.json").read())
-routes = json.loads(open("new_routes.json").read())
+stops = json.loads(open("data/new_stops.json").read())
+services = json.loads(open("data/new_services.json").read())
+routes = json.loads(open("data/new_routes.json").read())
 
-with open("export.json",encoding="utf-8") as a:
+with open("data/export.json",encoding="utf-8") as a:
         ways = json.load(a)
 
 # with open("bus_edges.json",encoding="utf-8") as a:
