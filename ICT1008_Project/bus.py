@@ -1,46 +1,10 @@
-import sys
 import json
 import heapq
 import pandas as pd
-import numpy as np
 import osmnx as ox
 from osmnx import settings
 import networkx as nx
-import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
 from math import sin, cos, sqrt, atan2, radians, acos
-
-
-def create_graph(response_jsons, name='unnamed', retain_all=False, bidirectional=False):
-    # create the graph as a MultiDiGraph and set the original CRS to default_crs
-    G = nx.MultiDiGraph(name=name, crs=settings.default_crs)
-
-    # extract nodes and paths from the downloaded osm data
-    nodes = {}
-    paths = {}
-    nodes_temp, paths_temp = ox.parse_osm_nodes_paths(response_jsons)
-    for key, value in nodes_temp.items():
-        nodes[key] = value
-
-    for key, value in paths_temp.items():
-        paths[key] = value
-
-    # add each osm node to the graph
-    for node, data in nodes.items():
-        G.add_node(node, **data)
-
-    # add each osm way (aka, path) to the graph
-    G = ox.add_paths(G, paths, bidirectional=False)
-
-    # if not retain_all:
-    #     G = geo_utils.get_largest_component(G)
-
-    if len(G.edges) > 0:
-        # asd(G)
-        G = ox.add_edge_lengths(G)
-
-    return G
-
 
 def get_nearestedge_node(temp_y, temp_x, G):
     """
@@ -100,8 +64,6 @@ def calculate_H(s_lat, s_lon, e_lat, e_lon):
 """
 Create coordinates from nodes and return an array of coordinates
 """
-
-
 def node_list_to_coordinate_lines(G, node_list, use_geom=True):
     edge_nodes = list(zip(node_list[:-1], node_list[1:]))
     lines = []
@@ -125,70 +87,17 @@ def node_list_to_coordinate_lines(G, node_list, use_geom=True):
             lines.append(line)
     return lines
 
-
-start = sys.argv[1]
-end = sys.argv[2]
-current_time = int(sys.argv[3])
-cost_per_stop = float(sys.argv[4])
-cost_per_trans = float(sys.argv[5])
-
-stops = json.loads(open("data/new_stops.json").read())
-services = json.loads(open("data/new_services.json").read())
-routes = json.loads(open("data/new_routes.json").read())
-
-with open("data/export.json", encoding="utf-8") as a:
-    ways = json.load(a)
-
-# with open("bus_edges.json",encoding="utf-8") as a:
-#         bus_edges = json.load(a)
-
-# df = pd.read_csv("bus_stop.csv")
-plotting_G = ox.load_graphml('Bus_Overpass.graphml')
-
-G = create_graph(ways)
-
-stop_code_map = {stop["BusStopCode"]: stop for stop in stops}
-
-routes_map = {}
-
-for route in routes:
-    key = (route["ServiceNo"], route["Direction"])
-    if key not in routes_map:
-        routes_map[key] = []
-    routes_map[key] += [route]
-
-graph = {}
-
-"""
-Creates the graph needed to run djikstra on
-"""
-for service, path in routes_map.items():
-    path.sort(key=lambda r: r["StopSequence"])
-    for route_idx in range(len(path) - 1):
-        key = path[route_idx]["BusStopCode"]
-        if key not in graph:
-            graph[key] = {}
-        curr_route_stop = path[route_idx]
-        next_route_stop = path[route_idx + 1]
-        curr_dist = curr_route_stop["Distance"] or 0
-        next_dist = next_route_stop["Distance"] or curr_dist
-        dist = next_dist - curr_dist
-        assert dist >= 0, (curr_route_stop, next_route_stop)
-        curr_code = curr_route_stop["BusStopCode"]
-        next_code = next_route_stop["BusStopCode"]
-        graph[curr_code][(next_code, service)] = dist
-
 """
 Dijkstra algorithm to find the shortest path and taking into account least transfer
 """
+def dijkstras(graph, start, end, cost_per_trans):
 
-
-def dijkstras(graph, start, end):
     seen = set()
     # maintain a queue of paths
     queue = []
     # push the first path into the queue
     heapq.heappush(queue, (0, 0, 0, [(start, None)]))
+    
     while queue:
         # get the first path from the queue
         (curr_cost, curr_dist, curr_trans, path) = heapq.heappop(queue)
@@ -198,7 +107,7 @@ def dijkstras(graph, start, end):
 
         # path found
         if node == end:
-            return (curr_cost, curr_dist, curr_trans, path)
+            return (curr_dist, curr_trans, path)
 
         if (node, curr_service) in seen:
             continue
@@ -215,70 +124,105 @@ def dijkstras(graph, start, end):
             if curr_service != service:
                 new_cost += cost_per_trans
                 new_trans += 1
-            new_cost += cost_per_stop
-
             heapq.heappush(queue, (new_cost, new_dist, new_trans, new_path))
 
-
-(cost, distance, transfers, path) = dijkstras(graph, start, end)
-
-route_coordinates = []
-
 """
-Generating the output and storing the the x and y coordinates in an array
+Main function to run the bus routing algorithm
 """
-for code, service in path:
-    if service != None:
-        bus_service, b = service
-        # test.append([bus_service, stop_code_map[code]["BusStopCode"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
-        route_coordinates.append([stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
-        print(service, stop_code_map[code]["BusStopCode"], stop_code_map[code]["RoadName"],
-              stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"])
+def bus_route(start,end,cost_per_trans):
+    
+    dijkstra_result=[]
+    bus_route_name_service=[]
+    plotting_routes = []
+    lineStrings = []
+    plotting_nodes = []
+    route_coordinates = []
+    routes_map = {}
+    graph = {}
 
-print(len(path), "stops")
-print("cost", cost)
-print("distance", distance, "km")
-print("transfers", transfers)
+    stops = json.loads(open("data/new_stops.json").read())
 
-# for bus_svc,bus_stop, lat, lng in (test):
-#     for idx,y in enumerate(df["asset_ref"]):
-#         if(df["asset_ref"][idx]!="None"):
-#             if(int(df["asset_ref"][idx]) == int(bus_stop)):
-#                 new_coordinates.append([lat,lng])
-#                 coord.update({"bus_route_"+str(count):{"bus_svc":bus_svc,"y":lat, "x":lng}})
-#                 count+=1
+    routes = json.loads(open("data/new_routes.json").read())
+
+    df = pd.read_csv("data/bus_stop.csv")
+
+    stop_code_map = {stop["BusStopCode"]: stop for stop in stops}
+
+    for route in routes:
+        key = (route["ServiceNo"], route["Direction"])
+        if key not in routes_map:
+            routes_map[key] = []
+        routes_map[key] += [route]
+
+    """
+    Creates the graph needed to run djikstra on
+    """
+    for service, path in routes_map.items():
+        path.sort(key=lambda r: r["StopSequence"])
+        for route_idx in range(len(path) - 1):
+            key = path[route_idx]["BusStopCode"]
+            if key not in graph:
+                graph[key] = {}
+            curr_route_stop = path[route_idx]
+            next_route_stop = path[route_idx + 1]
+            curr_dist = curr_route_stop["Distance"] or 0
+            next_dist = next_route_stop["Distance"] or curr_dist
+            dist = next_dist - curr_dist
+            assert dist >= 0, (curr_route_stop, next_route_stop)
+            curr_code = curr_route_stop["BusStopCode"]
+            next_code = next_route_stop["BusStopCode"]
+            graph[curr_code][(next_code, service)] = dist
 
 
-# def nearest_node(bus_stop_graph, endpoint_arr):
-#         bus_stop_result = []
-#         for x in endpoint_arr:
-#             print(x[0])
-#             print(x[1])
-#             bus_stop_graph['reference_y'] = x[1]
-#             bus_stop_graph['reference_x'] = x[0]
-#             distances = euclidean_dist_vec(y1=bus_stop_graph['reference_y'],
-#                                         x1=bus_stop_graph['reference_x'],
-#                                         y2=bus_stop_graph['y'],
-#                                         x2=bus_stop_graph['x'])
-#             nearest_node_a = distances.idxmin()
-#             bus_stop_result.append(bus_stop_graph["osmid"][nearest_node_a])
-#         return bus_stop_result
+    (distance, transfers, path) = dijkstras(graph, start, end, cost_per_trans)
 
-print(route_coordinates)
+    """
+    Generating the output and storing the the x and y coordinates in an array
+    """
+    for code, service in path:
+        if service != None:
+            bus_service, b = service
+            route_coordinates.append([stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
+            bus_route_name_service.append([bus_service, stop_code_map[code]["Description"],stop_code_map[code]["BusStopCode"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
+    
+    """
+    Fixing inaccurate coordinates from datamall data set
+    """
+    for y in bus_route_name_service:    
+        for idx,x in enumerate(df["asset_ref"]):    
+            if str(y[2])==str(x):
+                y[3]=df["y"][idx]
+                y[4]=df["x"][idx]
 
-a = ox.graph_from_point((1.3984, 103.9072), distance=3000, network_type='drive')
-plotting_nodes = []
-for i in route_coordinates:
-    plotting_nodes.append(get_nearestedge_node(i[0], i[1], a))
+    dijkstra_result.append([len(path), distance, transfers])
 
-plotting_routes = []
-lineStrings = []
-for x in range(0, len(plotting_nodes) - 1):
-    plotting_routes = nx.shortest_path(a, plotting_nodes[x], plotting_nodes[x + 1])
-print("plotting_routes", plotting_routes)
+    
+    """
+    Creating the graph using osmnx
+    """
+    a = ox.graph_from_point((1.3984, 103.9072), distance=3000, network_type='drive')
+    
+    """
+    Generating the nodes nearest to bus stop coordinates
+    """
+    for i in route_coordinates:
+        plotting_nodes.append(get_nearestedge_node(i[0], i[1], a))
 
-# for x in plotting_routes:
-lineStrings = node_list_to_coordinate_lines(a, plotting_routes)
-print("cooordinates", lineStrings)
-# ox.plot_graph_routes(a, plotting_routes)
-# print("plotting_nodes", plotting_nodes)
+    """
+    Generating the path to plot on the map
+    """
+    for x in range(0, len(plotting_nodes) - 1):
+        plotting_routes = nx.shortest_path(a, plotting_nodes[x], plotting_nodes[x + 1])
+
+    """
+    Converting the nodes into coordinates to plot on the GUI map
+    """
+    lineStrings = node_list_to_coordinate_lines(a, plotting_routes)
+
+    return lineStrings, dijkstra_result, bus_route_name_service
+
+a,b,c=bus_route("65009","65469",4) # Start , stop and transfer cost
+
+print(a) #Line string
+print(b) #[len(path), distance, transfers]
+print(c) #bus path
