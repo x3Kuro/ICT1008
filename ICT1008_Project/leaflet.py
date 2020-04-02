@@ -1,3 +1,4 @@
+# from bus import *
 import os
 from flask import Flask, redirect, url_for, render_template, request, jsonify
 import osmnx as ox
@@ -16,6 +17,7 @@ from osmnx.geo_utils import get_largest_component
 from osmnx.downloader import overpass_request
 from osmnx.errors import *
 from math import sin, cos, sqrt, atan2, radians
+
 
 
 # Custom OSM functions to get more OSM data details
@@ -168,7 +170,7 @@ def do_geocode(address):
 # Create walking polyline
 def create_polyline(g, start, end):
     new_polyline = []
-    path = dijkstra(walk_edges, start, end, 0)[1]
+    path = dijkstra(walk_edges, start, end)[1]
     coords = ox.node_list_to_coordinate_lines(g, path)
     swapOrder(coords, new_polyline)
     return new_polyline
@@ -188,13 +190,13 @@ def heur(start, end):
     dlon = lon2 - lon1
     dlat = lat2 - lat1
 
-    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    x = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * atan2(sqrt(x), sqrt(1 - x))
 
     # Distance between current node and end node
-    distance = R * c * 1000
+    d = R * c * 1000
 
-    return distance
+    return d
 
 
 # Find nearest station. Returns Heuristic, OSMid, x and y coordinates
@@ -209,19 +211,13 @@ def findingStation(startyx):
 
 
 # Dijkstra algorithm for walk and MRT
-def dijkstra(edges, start, end, choice):
+def dijkstra(edges, start, end):
     # Initalize a dictionary to store edges/node
     graph = defaultdict(list)
     # Storing Nodes with similar start/end nodes together in a dictionary
     for startNode, endNode, weight, oneWay in edges:
         # This line sets the connection between the edges to the nodes (e.g. (A->B))
         graph[startNode].append((weight, endNode, random.randrange(2, 6)))
-        # if oneWay == "False":
-
-        # {'Punggol': [(10, 'Damai', 4), (9.5, 'Cove', 3), (9, 'Sam Kee', 5), (7.5, 'Soo Teck', 3)], ....}
-
-        # This line allows bi-direction search between nodes (e.g. (B->A))
-        # graph[endNode].append((weight, startNode, random.randrange(2,6)))
 
     if start not in graph or end not in graph:
         return "No Path can be found"
@@ -243,15 +239,6 @@ def dijkstra(edges, start, end, choice):
                 return weight, path, "Total number of stops: " + str(len(path))
 
             for w, v2, t in graph.get(v1, ()):
-
-                # add in a transfer huristic to each node if least transfer is the option
-                if choice == 1:
-                    w += 300
-
-                # add in a time huristic to each node if fastest path is the option
-                if choice == 2:
-                    w += t
-
                 if v2 in seen:
                     continue
 
@@ -394,15 +381,15 @@ def get_path_data():
                 end_geom, end_u, end_v = ox.get_nearest_edge(G_train, (end_station_det[2], end_station_det[3]))
                 # =========================================== TRAIN =========================================== #
                 if diff_loop == 1:
-                    path1 = dijkstra(train_edges, start_u, 6587709457, 0)[1]
-                    path2 = dijkstra(train_edges, 6587709457, end_v, 0)[1]
+                    path1 = dijkstra(train_edges, start_u, 6587709457)[1]
+                    path2 = dijkstra(train_edges, 6587709457, end_v)[1]
                     train_coords1 = ox.node_list_to_coordinate_lines(G_train, path1)
                     swapOrder(train_coords1, new_polyline)
                     train_coords2 = ox.node_list_to_coordinate_lines(G_train, path2)
                     swapOrder(train_coords2, new_polyline)
 
                 else:
-                    path = dijkstra(train_edges, start_u, end_v, 0)[1]
+                    path = dijkstra(train_edges, start_u, end_v)[1]
                     train_coords = ox.node_list_to_coordinate_lines(G_train, path)
                     swapOrder(train_coords, new_polyline)
 
@@ -438,15 +425,15 @@ def get_path_data():
                 end_geom, end_u, end_v = ox.get_nearest_edge(G_train, (end_station_det[2], end_station_det[3]))
                 # =========================================== TRAIN =========================================== #
                 if diff_loop == 1:
-                    path1 = dijkstra(train_edges, start_u, 6587709457, 0)[1]
-                    path2 = dijkstra(train_edges, 6587709457, end_v, 0)[1]
+                    path1 = dijkstra(train_edges, start_u, 6587709457)[1]
+                    path2 = dijkstra(train_edges, 6587709457, end_v)[1]
                     train_coords1 = ox.node_list_to_coordinate_lines(G_train, path1)
                     swapOrder(train_coords1, new_polyline)
                     train_coords2 = ox.node_list_to_coordinate_lines(G_train, path2)
                     swapOrder(train_coords2, new_polyline)
 
                 else:
-                    path = dijkstra(train_edges, start_u, end_v, 0)[1]
+                    path = dijkstra(train_edges, start_u, end_v)[1]
                     train_coords = ox.node_list_to_coordinate_lines(G_train, path)
                     swapOrder(train_coords, new_polyline)
 
