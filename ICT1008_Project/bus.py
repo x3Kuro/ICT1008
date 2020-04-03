@@ -51,7 +51,6 @@ def calculate_H(s_lat, s_lon, e_lat, e_lon):
     -------
     distance
     """
-    R = 6371.0
     snlat = radians(s_lat)
     snlon = radians(s_lon)
     elat = radians(e_lat)
@@ -129,7 +128,7 @@ def dijkstras(graph, start, end, cost_per_trans):
 """
 Main function to run the bus routing algorithm
 """
-def bus_route(start,end,cost_per_trans):
+def bus_route(startOsmid, endOsmid, cost_per_trans):
     
     dijkstra_result=[]
     bus_route_name_service=[]
@@ -140,23 +139,32 @@ def bus_route(start,end,cost_per_trans):
     routes_map = {}
     graph = {}
 
+    """
+    Preparing the relevent data sets to be used
+    """
     stops = json.loads(open("data/new_stops.json").read())
-
     routes = json.loads(open("data/new_routes.json").read())
-
     df = pd.read_csv("data/bus_stop.csv")
-
     stop_code_map = {stop["BusStopCode"]: stop for stop in stops}
 
+    """
+    Converting the osmid into bus stops code to run in the dijkstra algorithm
+    """
+    for idx,x in enumerate(df["osmid"]):    
+        if str(startOsmid)==str(x):
+            startBusStops=df["asset_ref"][idx]
+        if str(endOsmid)==str(x):
+            endBusStops=df["asset_ref"][idx]
+
+    """
+    Creates the graph needed to run djikstra on
+    """
     for route in routes:
         key = (route["ServiceNo"], route["Direction"])
         if key not in routes_map:
             routes_map[key] = []
         routes_map[key] += [route]
 
-    """
-    Creates the graph needed to run djikstra on
-    """
     for service, path in routes_map.items():
         path.sort(key=lambda r: r["StopSequence"])
         for route_idx in range(len(path) - 1):
@@ -173,11 +181,14 @@ def bus_route(start,end,cost_per_trans):
             next_code = next_route_stop["BusStopCode"]
             graph[curr_code][(next_code, service)] = dist
 
-
-    (distance, transfers, path) = dijkstras(graph, start, end, cost_per_trans)
+    """
+    Calling the dijkstra function and storing the result
+    """
+    (distance, transfers, path) = dijkstras(graph, startBusStops, endBusStops, cost_per_trans)
+    dijkstra_result.append([len(path), distance, transfers])
 
     """
-    Generating the output and storing the the x and y coordinates in an array
+    Generating the path output and storing the the x and y coordinates in an array
     """
     for code, service in path:
         if service != None:
@@ -193,10 +204,7 @@ def bus_route(start,end,cost_per_trans):
             if str(y[2])==str(x):
                 y[3]=df["y"][idx]
                 y[4]=df["x"][idx]
-
-    dijkstra_result.append([len(path), distance, transfers])
-
-    
+ 
     """
     Creating the graph using osmnx
     """
@@ -221,8 +229,8 @@ def bus_route(start,end,cost_per_trans):
 
     return lineStrings, dijkstra_result, bus_route_name_service
 
-a,b,c=bus_route("65009","65469",4) # Start , stop and transfer cost
-
+# a,b,c=bus_route("65009","65469",4) 
+a,b,c=bus_route(1847853709, 3905803183, 4) # StartOsmid , stoposmid and transfer cost
 print(a) #Line string
 print(b) #[len(path), distance, transfers]
 print(c) #bus path
