@@ -336,6 +336,9 @@ def get_path_data():
     new_polyline = []
     walk_polyline = []
     bus_polyline = []
+    info = ""
+    transfer = ""
+
     # Get user input source and destination, mode of transport
     input_src = request.args.get('source', 0, type=str)
     input_dest = request.args.get('dest', 0, type=str)
@@ -475,7 +478,6 @@ def get_path_data():
 
                 # end point is less than 200m from start lrt station
                 else:
-                    print("WHAT IS HEUR", heur((dest.longitude, dest.latitude), (end_station_det[2], end_station_det[3])))
                     # finding nearest walk node to end lrt station
                     elrt_walknode = ox.get_nearest_node(G_walk, (end_station_det[2], end_station_det[3]))
                     walk_polyline.append(create_polyline(G_walk, elrt_walknode, end_walk))
