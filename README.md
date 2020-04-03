@@ -60,7 +60,7 @@ conda env list
 1. Go to 127.0.0.1:5000
 1. Start using the application
 
-<div style="text-align:center"><img src="https://github.com/x3Kuro/ICT1008/tree/master/ICT1008_Project/img/gui.JPG" width="150"></div>
+![alt text](https://github.com/x3Kuro/ICT1008/blob/master/ICT1008_Project/img/gui.JPG "GUI")
 
 ## Acknowledgements
 ***Team 2-5***
