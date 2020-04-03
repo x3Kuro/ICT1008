@@ -15,11 +15,17 @@ body{
     color: #fff;
 }
 
-#walk, #bus, #train{
-    margin: 10% 2%;
-}
 #submit{
     margin-top: 7%;
+}
+
+#hidden_div {
+    margin-top: 3%;
+    display: none;
+}
+
+#bus_info{
+    margin-top: 10%;
 }
 
 input[type="text"]{

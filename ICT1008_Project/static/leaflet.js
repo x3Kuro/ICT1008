@@ -10,13 +10,15 @@ $(function() {
       transport_mode: $('select[name="transport_mode"]').val()
     }, function(data) {
         map.spin(false);
-        plotMap(data.train_path, data.walk_path, data.start, data.start_road, data.end, data.end_road);
+        plotMap(data.train_path, data.walk_path, data.bus_path, data.start, data.start_road, data.end, data.end_road);
+        $('#bus_info').html(data.bus_info);
+        $('#bus_stop').html(data.bus_transfer);
       });
     return false;
   });
 });
 
-function plotMap(train_path, walk_path, src, start_rd, dest, end_rd) {
+function plotMap(train_path, walk_path, bus_path, src, start_rd, dest, end_rd) {
     if (map != undefined && map != null) {
         map.remove();
     }
@@ -60,6 +62,17 @@ function plotMap(train_path, walk_path, src, start_rd, dest, end_rd) {
                     // dash lines every 18px, for 1px size
                     {offset: 0, repeat: 18, symbol: L.Symbol.dash({pixelSize: 1, pathOptions: {color: '#0072d9', weight:10}})}
                 ]
+            }).addTo(paths);
+        }
+    }
+
+    if (bus_path != undefined){
+        for (var i = 0; i < bus_path.length; i++){
+            L.polyline(bus_path[i], {
+                color:'green',
+                width: 8,
+                opacity: 1,
+                smoothFactor: 1
             }).addTo(paths);
         }
     }

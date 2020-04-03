@@ -1,4 +1,4 @@
-# from bus import *
+from bus import *
 import os
 from flask import Flask, redirect, url_for, render_template, request, jsonify
 import osmnx as ox
@@ -19,7 +19,6 @@ from osmnx.errors import *
 from math import sin, cos, sqrt, atan2, radians
 
 
-
 # Custom OSM functions to get more OSM data details
 def get_node(element):
     """
@@ -34,7 +33,7 @@ def get_node(element):
     -------
     dict
     """
-    useful_tags_node = ['ref', 'name', 'railway', 'route_ref']
+    useful_tags_node = ['ref', 'name', 'railway', 'route_ref', 'highway', 'asset_ref']
     node = {}
     node['y'] = element['lat']
     node['x'] = element['lon']
@@ -128,8 +127,6 @@ def create_graph(response_jsons, name='unnamed', retain_all=True, bidirectional=
     if not retain_all:
         G = get_largest_component(G)
 
-    log('Created graph with {:,} nodes and {:,} edges in {:,.2f} seconds'.format(len(list(G.nodes())), len(list(G.edges())), time.time()-start_time))
-
     # add length (great circle distance between nodes) attribute to each edge to
     # use as weight
     if len(G.edges) > 0:
@@ -167,7 +164,7 @@ def do_geocode(address):
         return do_geocode(address)
 
 
-# Create walking polyline
+# Create polyline
 def create_polyline(g, start, end):
     new_polyline = []
     path = dijkstra(walk_edges, start, end)[1]
@@ -254,22 +251,35 @@ def dijkstra(edges, start, end):
 # Walk query data
 G_walk = ox.graph_from_polygon(polygon, retain_all=True, truncate_by_edge=True, network_type='walk')
 
+nodes, edges = ox.graph_to_gdfs(G_walk)
+nodes.to_csv('data/walk_nodes.csv')
+edges.to_csv('data/walk_edges.csv')
+
 # Train query data from overpass API
 train_query_str = '[out:json][timeout:180];(relation["network"="Singapore Rail"]["route"="monorail"]' \
                   '(1.3920,103.8955,1.4191,103.9218); >;);out;'
 train_response_json = overpass_request(data={'data': train_query_str}, timeout=180)
 train_graph = create_graph(train_response_json, name='unnamed')
-G_train = ox.truncate_graph_polygon(train_graph, polygon, truncate_by_edge=True,  retain_all=True)
+G_train = ox.truncate_graph_polygon(train_graph, polygon, truncate_by_edge=True, retain_all=True)
 
 gdf_nodes, gdf_edges = ox.graph_to_gdfs(G_train)
 gdf_nodes.to_csv('data/train_nodes.csv')
 gdf_edges.to_csv('data/train_edges.csv')
 
-# ======================================= GET DF DATA TO CSV======================================= #
+busstop_query_str = '[out:json];(node["highway"="bus_stop"](1.3891,103.8872,1.4222,103.9261);>;);out;'
+bus_response_json = ox.overpass_request(data={'data': busstop_query_str}, timeout=180)
+G_bus = create_graph(bus_response_json)
+G_bus = ox.truncate_graph_polygon(G_bus, polygon, truncate_by_edge=True, retain_all=True)
+
+# ======================================= GET TUPLE OF DF DATA ======================================= #
 # Get Walk edge
 walk_df = pd.read_csv('data/walk_edges.csv')
 col = walk_df[['u', 'v', 'length', 'oneway']]
 walk_edges = [tuple(x) for x in col.values]
+
+walk_df = pd.read_csv('data/walk_nodes.csv')
+col = walk_df[['y', 'x', 'osmid']]
+walk_nodes = [tuple(x) for x in col.values]
 
 # Get MRT edges
 train_df = pd.read_csv('data/train_edges.csv')
@@ -280,6 +290,11 @@ train_edges = [tuple(x) for x in col.values]
 train_df = pd.read_csv('data/train_nodes.csv')
 col = train_df[['y', 'x', 'osmid', 'ref', 'name', 'railway']]
 mrt_nodes = [tuple(x) for x in col.values]
+
+# Get bus nodes
+bus_df = pd.read_csv('data/bus_stop.csv')
+col = bus_df[['y', 'x', 'osmid']]
+bus_nodes = [tuple(x) for x in col.values]
 
 # ================================= SPLIT EAST AND WEST LOOP MRT ================================= #
 east = []
@@ -307,9 +322,11 @@ def index():
 def home():
     train_path = []
     walk_path = []
+    bus_path = []
     start = []
     end = []
-    return render_template('leaflet.html', start=start, end=end, train_path=train_path, walk_path=walk_path)
+    return render_template('leaflet.html', start=start, end=end, train_path=train_path, walk_path=walk_path,
+                           bus_path=bus_path)
 
 
 @app.route('/data', methods=['POST', 'GET'])
@@ -318,6 +335,7 @@ def get_path_data():
     train_polyline = []
     new_polyline = []
     walk_polyline = []
+    bus_polyline = []
     # Get user input source and destination, mode of transport
     input_src = request.args.get('source', 0, type=str)
     input_dest = request.args.get('dest', 0, type=str)
@@ -331,11 +349,13 @@ def get_path_data():
     start = [src.latitude, src.longitude]
     end = [dest.latitude, dest.longitude]
 
-    # Get nearest nodes for start and end, train and walk
+    # Get nearest nodes for start and end for bus, train and walk
     start_walk = ox.get_nearest_node(G_walk, (src.latitude, src.longitude))
     end_walk = ox.get_nearest_node(G_walk, (dest.latitude, dest.longitude))
     start_train = ox.get_nearest_node(G_train, (src.latitude, src.longitude), return_dist=True)
     end_train = ox.get_nearest_node(G_train, (dest.latitude, dest.longitude), return_dist=True)
+    start_bus = ox.get_nearest_node(G_bus, (src.latitude, src.longitude), return_dist=True)
+    end_bus = ox.get_nearest_node(G_bus, (dest.latitude, dest.longitude), return_dist=True)
     # Find nearest start and end train stations
     start_station_det = findingStation((src.latitude, src.longitude))
     end_station_det = findingStation((dest.latitude, dest.longitude))
@@ -373,38 +393,98 @@ def get_path_data():
                     end_station_det[1] == 6587709456 and start_station_det[1] == 6587709457):
                 # ====================================== PURELY WALKING ====================================== #
                 walk_polyline.append(create_polyline(G_walk, start_walk, end_walk))
-
             else:
                 # Will return heuristic, OSMid, y, x. E.g. (253.48788074253008, 1840734598, 1.4118877, 103.9003304)
                 # Starting node always use start_u, for ending node always use end_v
-                start_geom, start_u, start_v = ox.get_nearest_edge(G_train, (start_station_det[2], start_station_det[3]))
+                start_geom, start_u, start_v = ox.get_nearest_edge(G_train,
+                                                                   (start_station_det[2], start_station_det[3]))
                 end_geom, end_u, end_v = ox.get_nearest_edge(G_train, (end_station_det[2], end_station_det[3]))
+
                 # =========================================== TRAIN =========================================== #
+                # if both lrt station found in different loops
                 if diff_loop == 1:
+                    # retrieving path after running algo
                     path1 = dijkstra(train_edges, start_u, 6587709457)[1]
                     path2 = dijkstra(train_edges, 6587709457, end_v)[1]
-                    train_coords1 = ox.node_list_to_coordinate_lines(G_train, path1)
-                    swapOrder(train_coords1, new_polyline)
-                    train_coords2 = ox.node_list_to_coordinate_lines(G_train, path2)
-                    swapOrder(train_coords2, new_polyline)
 
+                    # convert nodes to coords and appending the coordinate path into new_polyline array
+                    swapOrder(ox.node_list_to_coordinate_lines(G_train, path1), new_polyline)
+                    swapOrder(ox.node_list_to_coordinate_lines(G_train, path2), new_polyline)
+
+                # if both lrt station found in same loop
                 else:
+                    # retrieving path after running algo
                     path = dijkstra(train_edges, start_u, end_v)[1]
-                    train_coords = ox.node_list_to_coordinate_lines(G_train, path)
-                    swapOrder(train_coords, new_polyline)
 
-                # =========================================== WALK + MRT =========================================== #
-                if start_train[1] > 10:
-                    to_mrt = ox.get_nearest_node(G_walk, (start_station_det[2], start_station_det[3]))
-                    walk_polyline.append(create_polyline(G_walk, start_walk, to_mrt))
+                    # convert nodes to coords and appending the coordinate path into new_polyline array
+                    swapOrder(ox.node_list_to_coordinate_lines(G_train, path), new_polyline)
 
-                if end_train[1] > 10:
-                    from_mrt = ox.get_nearest_node(G_walk, (end_station_det[2], end_station_det[3]))
-                    walk_polyline.append(create_polyline(G_walk, from_mrt, end_walk))
+                # checking if start point is more than 200m from start lrt station
+                if start_train[1] > 400:
+                    # finding nearest bus stop at lrt start station
+                    slrt_busstop = ox.get_nearest_node(G_bus, (start_station_det[2], start_station_det[3]))
 
+                    # run bus algo to take bus from start point to lrt start station
+                    start_line, sbus_info, sbus_path = bus_route(start_bus[0], slrt_busstop, 10)
+                    for x in start_line:
+                        for y in x:
+                            list(y)
+                    bus_polyline.append(start_line)
+
+                    # check if start point to start point bus stop is more than 2m.
+                    if start_bus[1] > 2:
+                        startbuscoord = ()
+                        # retrieving the nearest walk node to the bus stop
+                        for n in bus_nodes:
+                            if n[2] == start_bus[0]:
+                                startbuscoord = (n[0], n[1])
+                        swalkto_busstop = ox.get_nearest_node(G_walk, startbuscoord)
+
+                        # calculating and plotting walk from end point to bus stop
+                        walk_polyline.append(create_polyline(G_walk, start_walk, swalkto_busstop))
+
+                # start point is less than 200m from start lrt station
+                else:
+                    # finding nearest walk node to start lrt station
+                    slrt_walknode = ox.get_nearest_node(G_walk, (start_station_det[2], start_station_det[3]))
+                    walk_polyline.append(create_polyline(G_walk, start_walk, slrt_walknode))
+
+                # checking if end point is more than 200m from end lrt station
+                if end_train[1] > 400:
+                    # finding nearest bus stop at lrt end station
+                    elrt_busstop = ox.get_nearest_node(G_bus, (end_station_det[2], end_station_det[3]))
+
+                    # run bus algo to take bus from end point to lrt end station
+                    end_line, ebus_info, ebus_path = bus_route(elrt_busstop, end_bus[0], 10)
+                    for x in end_line:
+                        for y in x:
+                            list(y)
+                    bus_polyline.append(end_line)
+
+                    # check if end point to end point bus stop is more than 2m.
+                    if end_bus[1] > 2:
+                        endbuscoord = ()
+                        # retrieving the nearest walk node to the bus stop
+                        for n in bus_nodes:
+                            if n[2] == end_bus[0]:
+                                endbuscoord = (n[0], n[1])
+                        ewalkto_busstop = ox.get_nearest_node(G_walk, endbuscoord)
+
+                        # calculating and plotting walk from end point to bus stop
+                        walk_polyline.append(create_polyline(G_walk, ewalkto_busstop, end_walk))
+
+                # end point is less than 200m from start lrt station
+                else:
+                    print("WHAT IS HEUR", heur((dest.longitude, dest.latitude), (end_station_det[2], end_station_det[3])))
+                    # finding nearest walk node to end lrt station
+                    elrt_walknode = ox.get_nearest_node(G_walk, (end_station_det[2], end_station_det[3]))
+                    walk_polyline.append(create_polyline(G_walk, elrt_walknode, end_walk))
+
+                # appending train plot
                 train_polyline.append(new_polyline)
+
+        # nearest start and end lrt station is the same, hence walk.
         else:
-            # ====================================== PURELY WALKING ====================================== #
             walk_polyline.append(create_polyline(G_walk, start_walk, end_walk))
     # =========================================== WALK =========================================== #
     elif transport_mode == "walk":
@@ -450,10 +530,51 @@ def get_path_data():
         else:
             # ====================================== PURELY WALKING ====================================== #
             walk_polyline.append(create_polyline(G_walk, start_walk, end_walk))
+    # =========================================== BUS =========================================== #
+    elif transport_mode == "bus":
+        # Get user input cost option for bus
+        cost_option = request.args.get('cost_option', 0, type=str)
+
+        # If user chooses to plot shortest path for bus
+        if cost_option == "sp":
+            cost = 0
+        # User choose to plot bus with least transfers
+        else:
+            cost = 10
+
+        # Check that the nearest bus stop for both locations is not the same
+        if start_bus[0] != end_bus[0]:
+            line_string, bus_info, bus_path = bus_route(start_bus[0], end_bus[0], cost)
+            for x in line_string:
+                for y in x:
+                    list(y)
+            bus_polyline.append(line_string)
+            # =========================================== WALK + BUS =========================================== #
+            if start_bus[1] > 5:
+                for n in bus_nodes:
+                    if n[2] == start_bus[0]:
+                        to_bus = ox.get_nearest_node(G_walk, (n[0], n[1]))
+                walk_polyline.append(create_polyline(G_walk, start_walk, to_bus))
+
+            if end_bus[1] > 5:
+                for n in bus_nodes:
+                    if n[2] == end_bus[0]:
+                        from_bus = ox.get_nearest_node(G_walk, (n[0], n[1]))
+                walk_polyline.append(create_polyline(G_walk, from_bus, end_walk))
+            info = "Number of transfers: " + str(bus_info[0][2]-1) + "<br>Total Distance: " + str(round((bus_info[0][1])
+                                                                                                        , 2)) + "km"
+            transfer = "<br>Bus Route:<br>"
+            for x in bus_path:
+                transfer += "Bus No.: " + x[0] + " " + x[1]  + " " + x[2] + "<br>"
+
+        else:
+            # ====================================== PURELY WALKING ====================================== #
+            walk_polyline.append(create_polyline(G_walk, start_walk, end_walk))
 
     # Return coordinates, address and polyline for plotting
     return jsonify(start=start, start_road=input_src, end=end, end_road=input_dest,
-                   train_path=train_polyline, walk_path=walk_polyline)
+                   train_path=train_polyline, walk_path=walk_polyline, bus_path=[bus_polyline], bus_info=info,
+                   bus_transfer=transfer)
 
 
 @app.context_processor
