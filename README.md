@@ -1,15 +1,28 @@
 # ICT1008 Punggol Project
 
+***Punggol Route Finder*** is a mapping visualization tool created with the purpose of providing users with the shortest travel path to their destination within the Punggol vicinity. This will find the best path using algorithms based on user input.
+
 ## Table of Contents
 - [Getting Started](#getting-started)
+  - [Dependencies](#dependencies)
   - [Prerequisites](#prerequisites)
-  - [Installing Anaconda](#installing-anaconda)
-  - [Setting up the Environment with Anaconda](#setting-up-the-environment-with-Anaconda)
+    - [Installing Anaconda](#installing-anaconda)
+    - [Setting up the Environment with Anaconda](#setting-up-the-environment-with-Anaconda)
 - [Usage](#usage)
 - [Acknowledgements](#acknowledgements)
+- [Credits](#credits)
 
 ## Getting Started
 These instructions will get you a copy of the project and successfully run it on your local machine for development and testing purposes.
+
+### Dependencies
+The following libraries are used in the creation of this application:
+
+1. [Python 3.7](https://docs.python.org/3.7/)
+1. [Flask](https://flask.palletsprojects.com/en/1.1.x/) 
+1. [Leaflet](https://leafletjs.com/reference-1.6.0.html)
+1. [Geopy](https://geopy.readthedocs.io/en/stable/)
+1. [Osmnx](https://osmnx.readthedocs.io/en/stable/)
 
 ### Prerequisites
 An `environment.yml` file is included in this repository to recreate the virtual environment via the file.
@@ -36,11 +49,25 @@ This will setup the environment for you and subsequently, you can `activate` the
 source activate dsa
 ```
 
-## Setting up the Environment
-1. Go to `../1008proj/ICT1008_Project` folder on command prompt
-2. Type the command `conda env create -f environment.yml`
+Verify that your environment is successfully set up using the following command:
+```sh
+conda env list
+```
 
-## Starting flask
+## Usage
 1. Type the command `set FLASK_APP=leaflet.py`
-2. `flask run`
-3. Go to 127.0.0.1:5000
+1. `flask run`
+1. Go to 127.0.0.1:5000
+
+## Acknowledgements
+***Team Blah-Blah***
+
+1. **Claudia Chan** | [@x3Kuro](https://github.com/x3Kuro)
+1. **Eugene Tan** | [@J3n3ns](https://github.com/J3n3ns)
+1. **Elisha Encinas Zacarias** | [@elishazacarias](https://github.com/elishazacarias)
+1. **Ng Hui Qi** | [@penclowunjia](https://github.com/penclowunjia)
+1. **Lam Qiao Xin** | [@xin0498](https://github.com/xin0498)
+1. **Joel Teo** | [@deebop](https://github.com/deebop)
+
+## Credits
+* Geoff Boeing - [OSMnx](https://github.com/gboeing/osmnx) | Creator of OSMnx
