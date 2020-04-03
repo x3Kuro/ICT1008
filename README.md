@@ -65,8 +65,8 @@ conda env list
 ## Acknowledgements
 ***Team 2-5***
 
-1. **Claudia Chan** | [@x3Kuro](https://github.com/x3Kuro)
-1. **Eugene Tan** | [@J3n3ns](https://github.com/J3n3ns)
+1. **Claudia Chan** | [@x3Kuro](https://github.com/x3Kuro) | GUI, Query Data, MRT, Integration, README, Video
+1. **Eugene Tan** | [@J3n3ns](https://github.com/J3n3ns) | Walk, MRT, Bus, Poster, Video
 1. **Elisha Encinas Zacarias** | [@elishazacarias](https://github.com/elishazacarias)
 1. **Ng Hui Qi** | [@penclowunjia](https://github.com/penclowunjia)
 1. **Lam Qiao Xin** | [@xin0498](https://github.com/xin0498)
