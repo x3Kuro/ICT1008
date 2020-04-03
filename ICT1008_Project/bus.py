@@ -59,33 +59,6 @@ def calculate_H(s_lat, s_lon, e_lat, e_lon):
     actual_dist = actual_dist * 1000
     return actual_dist
 
-
-"""
-Create coordinates from nodes and return an array of coordinates
-"""
-def node_list_to_coordinate_lines(G, node_list, use_geom=True):
-    edge_nodes = list(zip(node_list[:-1], node_list[1:]))
-    lines = []
-    for u, v in edge_nodes:
-        # if there are parallel edges, select the shortest in length
-        data = min(G.get_edge_data(u, v).values(), key=lambda x: x['length'])
-
-        # if it has a geometry attribute (ie, a list of line segments)
-        if 'geometry' in data and use_geom:
-            # add them to the list of lines to plot
-            xs, ys = data['geometry'].xy
-            lines.append(list(zip(xs, ys)))
-        else:
-            # if it doesn't have a geometry attribute, the edge is a straight
-            # line from node to node
-            x1 = G.nodes[u]['x']
-            y1 = G.nodes[u]['y']
-            x2 = G.nodes[v]['x']
-            y2 = G.nodes[v]['y']
-            line = [(y1, x1), (y2, x2)]
-            lines.append(line)
-    return lines
-
 """
 Dijkstra algorithm to find the shortest path and taking into account least transfer
 """
@@ -125,6 +98,16 @@ def dijkstras(graph, start, end, cost_per_trans):
                 new_cost += cost_per_trans
                 new_trans += 1
             heapq.heappush(queue, (new_cost, new_dist, new_trans, new_path))
+
+"""
+To flip the coordinates of the linestring
+"""
+def convertRoute(coords):
+        output = []
+        for x in range(len(coords)):  # Parent Array
+            for i in range(len(coords[x])):  # Inner Array
+                output.append([coords[x][i][1], coords[x][i][0]])
+        return output
 
 """
 Main function to run the bus routing algorithm
@@ -194,7 +177,6 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
     for code, service in path:
         if service != None:
             bus_service, b = service
-            route_coordinates.append([stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
             bus_route_name_service.append([bus_service, stop_code_map[code]["Description"],stop_code_map[code]["BusStopCode"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
             print(service, stop_code_map[code]["BusStopCode"],stop_code_map[code]["RoadName"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"])
 
@@ -206,34 +188,43 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
             if str(y[2])==str(x):
                 y[3]=df["y"][idx]
                 y[4]=df["x"][idx]
- 
+                route_coordinates.append([df["y"][idx], df["x"][idx]])
+
+    print(route_coordinates)
     """
     Creating the graph using osmnx
     """
-    a = ox.graph_from_point((1.3984, 103.9072), distance=3000, network_type='drive')
+    a = ox.graph_from_point((1.3984, 103.9072), distance=3000, network_type='drive_service')
     
     """
     Generating the nodes nearest to bus stop coordinates
     """
+
     for i in route_coordinates:
         plotting_nodes.append(get_nearestedge_node(i[0], i[1], a))
-
+    
     """
     Generating the path to plot on the map
     """
     for x in range(0, len(plotting_nodes) - 1):
-        plotting_routes = nx.shortest_path(a, plotting_nodes[x], plotting_nodes[x + 1])
+        plotting_routes.append(nx.shortest_path(a, plotting_nodes[x], plotting_nodes[x + 1]))
 
     """
     Converting the nodes into coordinates to plot on the GUI map
     """
-    lineStrings = node_list_to_coordinate_lines(a, plotting_routes)
+    for x in plotting_routes:
+
+        lineStrings.append(convertRoute(ox.node_list_to_coordinate_lines(a, x)))
 
     return lineStrings, dijkstra_result, bus_route_name_service
 
 # a,b,c=bus_route("65009","65469",4) 
 # a,b,c=bus_route(1847853709, 3905803183, 0) # StartOsmid , stoposmid and transfer cost
-a,b,c=bus_route(7276194081,410472396, 0)
-print(a) #Line string
-print(b) #[len(path), distance, transfers]
-print(c) #bus path
+# a,b,c=bus_route(7276194081,410472396, 0)
+# print(a) #Line string
+# print(b) #[len(path), distance, transfers]
+# print(c) #bus path
+
+# for x in a:
+    # for y in x:
+        # print("line string",y)
