@@ -58,9 +58,10 @@ conda env list
 1. Type the command `set FLASK_APP=leaflet.py`
 1. `flask run`
 1. Go to 127.0.0.1:5000
+1. Start using the application
 
 ## Acknowledgements
-***Team Blah-Blah***
+***Team 2-5***
 
 1. **Claudia Chan** | [@x3Kuro](https://github.com/x3Kuro)
 1. **Eugene Tan** | [@J3n3ns](https://github.com/J3n3ns)
