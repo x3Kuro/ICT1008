@@ -69,12 +69,12 @@ def dijkstras(graph, start, end, cost_per_trans):
     queue = []
     # push the first path into the queue
     heapq.heappush(queue, (0, 0, 0, [(start, None)]))
-    
+
     while queue:
-        # print(queue)
+
         # get the first path from the queue
         (curr_cost, curr_dist, curr_trans, path) = heapq.heappop(queue)
-
+        
         # get the last node from the path
         (node, curr_service) = path[-1]
 
@@ -131,12 +131,17 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
     df = pd.read_csv("data/bus_stop.csv")
     stop_code_map = {stop["BusStopCode"]: stop for stop in stops}
 
+
+    # for idx,x in df["osmid"]:
+    #     if x == 
     """
     Converting the osmid into bus stops code to run in the dijkstra algorithm
     """
     for idx,x in enumerate(df["osmid"]):    
         if str(startOsmid)==str(x):
             startBusStops=df["asset_ref"][idx]
+            route_coordinates.append([df["y"][idx],df["x"][idx]])
+            print("start",startBusStops)
         if str(endOsmid)==str(x):
             endBusStops=df["asset_ref"][idx]
 
@@ -199,7 +204,9 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
     """
     Generating the nodes nearest to bus stop coordinates
     """
-
+    # startcoord = convertRoute([startOsmid])
+    # plotting_nodes.append(startcoord)
+    # print("hi", plotting_nodes)
     for i in route_coordinates:
         plotting_nodes.append(get_nearestedge_node(i[0], i[1], a))
     
@@ -213,17 +220,18 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
     Converting the nodes into coordinates to plot on the GUI map
     """
     for x in plotting_routes:
-
+        
         lineStrings.append(convertRoute(ox.node_list_to_coordinate_lines(a, x)))
-
+        
     return lineStrings, dijkstra_result, bus_route_name_service
+
 
 # a,b,c=bus_route("65009","65469",4) 
 # a,b,c=bus_route(1847853709, 3905803183, 0) # StartOsmid , stoposmid and transfer cost
-# a,b,c=bus_route(7276194081,410472396, 0)
-# print(a) #Line string
-# print(b) #[len(path), distance, transfers]
-# print(c) #bus path
+a,b,c=bus_route(7276194081,410472396, 0)
+print(a) #Line string
+print(b) #[len(path), distance, transfers]
+print(c) #bus path
 
 # for x in a:
     # for y in x:
