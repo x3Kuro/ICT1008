@@ -141,7 +141,6 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
         if str(startOsmid)==str(x):
             startBusStops=df["asset_ref"][idx]
             route_coordinates.append([df["y"][idx],df["x"][idx]])
-            print("start",startBusStops)
         if str(endOsmid)==str(x):
             endBusStops=df["asset_ref"][idx]
 
@@ -183,8 +182,6 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
         if service != None:
             bus_service, b = service
             bus_route_name_service.append([bus_service, stop_code_map[code]["Description"],stop_code_map[code]["BusStopCode"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
-            print(service, stop_code_map[code]["BusStopCode"],stop_code_map[code]["RoadName"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"])
-
     """
     Fixing inaccurate coordinates from datamall data set
     """
@@ -195,7 +192,6 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
                 y[4]=df["x"][idx]
                 route_coordinates.append([df["y"][idx], df["x"][idx]])
 
-    print(route_coordinates)
     """
     Creating the graph using osmnx
     """
@@ -204,9 +200,6 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
     """
     Generating the nodes nearest to bus stop coordinates
     """
-    # startcoord = convertRoute([startOsmid])
-    # plotting_nodes.append(startcoord)
-    # print("hi", plotting_nodes)
     for i in route_coordinates:
         plotting_nodes.append(get_nearestedge_node(i[0], i[1], a))
     
@@ -225,14 +218,3 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
         
     return lineStrings, dijkstra_result, bus_route_name_service
 
-
-# a,b,c=bus_route("65009","65469",4) 
-# a,b,c=bus_route(1847853709, 3905803183, 0) # StartOsmid , stoposmid and transfer cost
-a,b,c=bus_route(7276194081,410472396, 0)
-print(a) #Line string
-print(b) #[len(path), distance, transfers]
-print(c) #bus path
-
-# for x in a:
-    # for y in x:
-        # print("line string",y)
