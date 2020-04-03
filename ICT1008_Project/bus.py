@@ -98,6 +98,7 @@ def dijkstras(graph, start, end, cost_per_trans):
     heapq.heappush(queue, (0, 0, 0, [(start, None)]))
     
     while queue:
+        # print(queue)
         # get the first path from the queue
         (curr_cost, curr_dist, curr_trans, path) = heapq.heappop(queue)
 
@@ -142,8 +143,8 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
     """
     Preparing the relevent data sets to be used
     """
-    stops = json.loads(open("data/new_stops.json").read())
-    routes = json.loads(open("data/new_routes.json").read())
+    stops = json.loads(open("data/stops.json").read())
+    routes = json.loads(open("data/routes.json").read())
     df = pd.read_csv("data/bus_stop.csv")
     stop_code_map = {stop["BusStopCode"]: stop for stop in stops}
 
@@ -195,7 +196,8 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
             bus_service, b = service
             route_coordinates.append([stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
             bus_route_name_service.append([bus_service, stop_code_map[code]["Description"],stop_code_map[code]["BusStopCode"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"]])
-    
+            print(service, stop_code_map[code]["BusStopCode"],stop_code_map[code]["RoadName"],stop_code_map[code]["Latitude"], stop_code_map[code]["Longitude"])
+
     """
     Fixing inaccurate coordinates from datamall data set
     """
@@ -230,7 +232,8 @@ def bus_route(startOsmid, endOsmid, cost_per_trans):
     return lineStrings, dijkstra_result, bus_route_name_service
 
 # a,b,c=bus_route("65009","65469",4) 
-a,b,c=bus_route(1847853709, 3905803183, 4) # StartOsmid , stoposmid and transfer cost
+# a,b,c=bus_route(1847853709, 3905803183, 0) # StartOsmid , stoposmid and transfer cost
+a,b,c=bus_route(7276194081,410472396, 0)
 print(a) #Line string
 print(b) #[len(path), distance, transfers]
 print(c) #bus path
